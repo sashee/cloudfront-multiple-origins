@@ -7,7 +7,7 @@ resource "aws_cloudfront_distribution" "distribution" {
     origin_id   = "s3"
 
     s3_origin_config {
-			origin_access_identity = "${aws_cloudfront_origin_access_identity.OAI.cloudfront_access_identity_path}"
+      origin_access_identity = "${aws_cloudfront_origin_access_identity.OAI.cloudfront_access_identity_path}"
     }
   }
   origin {
@@ -15,10 +15,10 @@ resource "aws_cloudfront_distribution" "distribution" {
     origin_id   = "apigw"
 
     custom_origin_config {
-			http_port = 80
-			https_port = 443
-			origin_protocol_policy = "https-only"
-			origin_ssl_protocols = ["TLSv1.2"]
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
@@ -41,14 +41,14 @@ resource "aws_cloudfront_distribution" "distribution" {
   }
 
   ordered_cache_behavior {
-		path_pattern = "/api/*"
+    path_pattern     = "/api/*"
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "apigw"
 
-		default_ttl = 0
-		min_ttl = 0
-		max_ttl = 0
+    default_ttl = 0
+    min_ttl     = 0
+    max_ttl     = 0
 
     forwarded_values {
       query_string = true
@@ -59,33 +59,33 @@ resource "aws_cloudfront_distribution" "distribution" {
 
     viewer_protocol_policy = "redirect-to-https"
   }
-	restrictions {
-		geo_restriction {
-			restriction_type = "none"
-		}
-	}
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
 
   viewer_certificate {
-		cloudfront_default_certificate = true
+    cloudfront_default_certificate = true
   }
 }
 
 output "domain" {
-	value = "${aws_cloudfront_distribution.distribution.domain_name}"
+  value = "${aws_cloudfront_distribution.distribution.domain_name}"
 }
 
 # -------------- Origin resources --------------
 
 # s3 origin
 resource "aws_s3_bucket" "bucket" {
-	force_destroy = true
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_object" "object" {
   bucket = "${aws_s3_bucket.bucket.bucket}"
-	key    = "index.html"
+  key    = "index.html"
 
-	content = <<EOF
+  content      = <<EOF
 <script>
 const call = (path) => async () => {
 	[...document.querySelectorAll("button")].forEach((b) => b.disabled = true);
@@ -100,12 +100,12 @@ const call_api_path = call("/api/path");
 <button onclick="call_api_path()">call /api/path</button>
 <p id="result"></p>
 EOF
-	content_type = "text/html"
+  content_type = "text/html"
 }
 
 resource "aws_s3_bucket_policy" "OAI_policy" {
-	bucket = "${aws_s3_bucket.bucket.id}"
-	policy = "${data.aws_iam_policy_document.s3_policy.json}"
+  bucket = "${aws_s3_bucket.bucket.id}"
+  policy = "${data.aws_iam_policy_document.s3_policy.json}"
 }
 
 data "aws_iam_policy_document" "s3_policy" {
@@ -130,10 +130,10 @@ resource "random_id" "id" {
 }
 
 data "archive_file" "lambda_zip" {
-	type = "zip"
-	output_path = "/tmp/lambda.zip"
-	source {
-		content = <<EOF
+  type        = "zip"
+  output_path = "/tmp/lambda.zip"
+  source {
+    content  = <<EOF
 module.exports.handler = async (event, context, callback) => {
 	const response = {
 		statusCode: 200,
@@ -142,38 +142,38 @@ module.exports.handler = async (event, context, callback) => {
 	callback(null, response);
 };
 EOF
-	filename = "main.js"
-	}
+    filename = "main.js"
+  }
 }
 
 resource "aws_lambda_function" "lambda" {
-	function_name = "${random_id.id.hex}-function"
+  function_name = "${random_id.id.hex}-function"
 
-  filename = "${data.archive_file.lambda_zip.output_path}"
+  filename         = "${data.archive_file.lambda_zip.output_path}"
   source_code_hash = "${data.archive_file.lambda_zip.output_base64sha256}"
 
   handler = "main.handler"
   runtime = "nodejs10.x"
-  role = "${aws_iam_role.lambda_exec.arn}"
+  role    = "${aws_iam_role.lambda_exec.arn}"
 }
 
 data "aws_iam_policy_document" "lambda_exec_role_policy" {
-	statement {
-		sid = "1"
-		actions = [
-			"logs:CreateLogGroup",
-			"logs:CreateLogStream",
-			"logs:PutLogEvents"
-		]
-		resources = [
-			"arn:aws:logs:*:*:*"
-		]
-	}
+  statement {
+    sid = "1"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = [
+      "arn:aws:logs:*:*:*"
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_exec_role" {
-	role = "${aws_iam_role.lambda_exec.id}"
-	policy = "${data.aws_iam_policy_document.lambda_exec_role_policy.json}"
+  role   = "${aws_iam_role.lambda_exec.id}"
+  policy = "${data.aws_iam_policy_document.lambda_exec_role_policy.json}"
 }
 
 resource "aws_iam_role" "lambda_exec" {
@@ -196,7 +196,7 @@ EOF
 # api gw
 
 resource "aws_api_gateway_rest_api" "rest_api" {
-	name = "${random_id.id.hex}-rest-api"
+  name = "${random_id.id.hex}-rest-api"
 }
 
 resource "aws_api_gateway_resource" "proxy" {
